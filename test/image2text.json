@@ -1,0 +1,6 @@
+{
+    "type": "text",
+    "params": {
+        "task":"image2text"
+    }
+}

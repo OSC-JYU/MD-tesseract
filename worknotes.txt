@@ -1,0 +1,8 @@
+https://gaurav-neema.medium.com/ocring-identifying-page-structure-tesseract-hocr-760f3031f3ac
+
+When using tesseract, you can try out different OCR engine modes (OEM) page segmentation modes (psm). You can get the list of different OEMs and PSMs from the following commands:
+
+tesseract --help-oem
+tesseract --help-psm
+
+https://stackoverflow.com/questions/44571656/how-to-enable-hocr-font-info-in-tesseract-4

@@ -24,7 +24,7 @@ const upload = multer({
 // ******* ROUTES ************
 
 router.get('/', function (ctx) {
-	ctx.body = 'md-cld API'
+	ctx.body = 'md-tesseract API'
 })
 
 router.post('/process', upload.fields([
@@ -41,27 +41,27 @@ router.post('/process', upload.fields([
     const contentFilepath = ctx.request.files['content'][0].path
 
     try {
-        var dirname = uuidv4()
+        const dirname = contentFilepath.replace('uploads/', 'data/')
+        await fs.mkdir(dirname)
 
-        await fs.mkdir(path.join('data', dirname))
         var request = await fs.readFile(requestFilepath)
         var requestJSON = JSON.parse(request)
         console.log(requestJSON)
         const task = requestJSON.params.task
         delete requestJSON.params.task
     
-        // if(task == 'text') {
-        //     output.response.uri = await tesseractToText(contentFilepath, requestJSON.params, dirname)
-        // } else if(task == 'searchable_pdf') {
-        //     output.response.uri = await tesseractToPDF(contentFilepath, requestJSON.params, dirname)
-        // } else if(task == 'alto') {
-        //     output.response.uri = await tesseractToAlto(contentFilepath, requestJSON.params, dirname)
-        // } else if(task == 'hocr') {
-        //     output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname)
-        // }
+        if(task == 'image2text') {
+            output.response.uri = await tesseractToText([contentFilepath], requestJSON.params, dirname, 'text')
+        } else if(task == 'searchable_pdf') {
+            output.response.uri = await tesseractToPDF(contentFilepath, requestJSON.params, dirname, "file")
+        } else if(task == 'image2alto') {
+            output.response.uri = await tesseractToAlto(contentFilepath, requestJSON.params, dirname)
+        } else if(task == 'image2hocr') {
+            output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname)
+        }
 
-       // await fs.unlink(contentFilepath)
-      //  await fs.unlink(requestFilepath)
+       await fs.unlink(contentFilepath)
+       await fs.unlink(requestFilepath)
 
     } catch (e) {
         console.log(e.message)
@@ -77,6 +77,15 @@ router.post('/process', upload.fields([
 })
 
 
+router.get('/files/:dir/:file', async function (ctx) {
+    var input_path = path.join('data', ctx.request.params.dir, ctx.request.params.file)
+    const src = fs.createReadStream(input_path);
+    ctx.set('Content-Disposition', `attachment; filename=${ctx.request.params.file}`);
+    ctx.type = 'application/octet-stream';
+    ctx.body = src
+})
+
+
 // ******* ROUTES ENDS ************
 
 
@@ -87,50 +96,9 @@ var server = app.listen(set_port, function () {
    var host = server.address().address
    var port = server.address().port
 
-   console.log('md-cld running at http://%s:%s', host, port)
+   console.log('md-tesseract running at http://%s:%s', host, port)
 })
 
-
-
-async function tesseract(params, options, url_path, query) {
-    const file_id = params.fileid
-    const command_path = `/ocr/${params.tesseract_command}`
-    var p = url_path.split(file_id)[1]
-    const input_path = path.join(ROOT, file_id, p.replace(command_path,''))
-    const out_path =  path.join(ROOT, file_id, p + '/')
-    if(!await this.exists(input_path)) throw(`Input path not found! (${input_path})`)
-    var filelist = await this.getImageList(input_path, input_path, ALL_IMAGE_TYPES)
-    if(filelist.length === 0) throw('No images found!')
-
-    if(await this.exists(out_path)) throw(`Output directory exists (${out_path})`)
-
-    try {
-        await fsp.mkdir(out_path, { recursive: true })
-        await fsp.writeFile(path.join(out_path, 'files.txt'), filelist.join('\n'), 'utf8')
-    } catch(e) {
-        throw('Could not create files.txt ' + e)
-    }
-
-    if(query.lang) {
-        options.lang = query.lang
-    }
-    console.log(`tesseract options: ${JSON.stringify(options, null, 2)}`)
-    if(params.tesseract_command === 'pdf') {
-        options.pdf = true
-         await this.tesseractToPDF(filelist, options, out_path, 'full')
-    } else if(params.tesseract_command === 'textpdf') {
-        options.pdf = true
-        if(!options.c) options.c = {}
-        options.c['textonly_pdf'] = 1
-        await this.tesseractToPDF(filelist, options, out_path, 'ocr')
-    } else if(params.tesseract_command === 'text') {
-        await this.tesseractToText(filelist, options, out_path, '')
-    } else if(params.tesseract_command === 'text+images') {
-        if(!options.c) options.c = {}
-        options.c['tessedit_write_images'] = 1
-        await this.tesseractToText(filelist, options, out_path, '')
-    }
-}
 
 
 async function tesseractToText(filelist, options, out_path, outfile) {
@@ -140,42 +108,44 @@ async function tesseractToText(filelist, options, out_path, outfile) {
         const used = process.memoryUsage().heapUsed / 1024 / 1024;
         console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
         console.log('processing ' + f)
+        console.log('output ' + out_path)
         //const text = await tesseract.recognize(f, options)
         try {
             console.log(options)
-            await this.tesseract_spawn(f, options, path.join(out_path, path.basename(f)), outfile, result)
-            await fsp.writeFile(path.join(out_path, 'ocr.cli'), result.cli.join(' '), 'utf8')
-            await fsp.writeFile(path.join(out_path, 'ocr.log'), result.log.join(' '), 'utf8')
+            await tesseract_spawn(f, options, out_path, outfile, result)
+            await fs.writeFile(path.join(out_path, 'ocr.cli'), result.cli.join(' '), 'utf8')
+            await fs.writeFile(path.join(out_path, 'ocr.log'), result.log.join(' '), 'utf8')
         } catch(e) {
             console.log(e)
-            await fsp.writeFile(path.join(out_path, 'ocr.cli'), e.cli.join(' '), 'utf8')
-            await fsp.writeFile(path.join(out_path, 'ocr.log'), e.log.join(' '), 'utf8')
+            if(e.cli) await fs.writeFile(path.join(out_path, 'ocr.cli'), e.cli.join(' '), 'utf8')
+            if(e.log) await fs.writeFile(path.join(out_path, 'ocr.log'), e.log.join(' '), 'utf8')
         }
-        //await fsp.writeFile(path.join(out_path, path.basename(f) + '.txt'), text, 'utf8')
-        //result.push(text)
     }
-    // create fulltext.txt
-    //result = result.map((x , index) => '\n\n--- ' + index + ' ---\n\n' + x )
-    //await fsp.writeFile(path.join(out_path, 'fulltext.txt'), result.join(''), 'utf8')
+
     console.log('OCR done')
-    return 'done'
+    return `${out_path.replace('data', '/files')}/${outfile}.txt`
 }
+
 
 
 async function tesseractToPDF(filelist, options, out_path, outfile) {
+    console.log('pdf')
     var result = {log: [], data: [], cli: '', exitcode: ''}
+    options.pdf = true
     try {
-        await this.tesseract_spawn(filelist, options, out_path, outfile, result)
-        await fsp.writeFile(path.join(out_path, 'ocr.cli'), result.cli.join(' '), 'utf8')
-        await fsp.writeFile(path.join(out_path, 'ocr.log'), result.log.join('\n'), 'utf8')
+        console.log(options)
+        await tesseract_spawn(filelist, options, out_path, outfile, result)
+        await fs.writeFile(path.join(out_path, 'ocr.cli'), result.cli.join(' '), 'utf8')
+        await fs.writeFile(path.join(out_path, 'ocr.log'), result.log.join('\n'), 'utf8')
     } catch(e) {
-        if(e.cli) await fsp.writeFile(path.join(out_path, 'ocr.cli'), e.cli.join(' '), 'utf8')
-        if(e.log) await fsp.writeFile(path.join(out_path, 'ocr.log'), e.log.join('\n'), 'utf8')
+        if(e.cli) await fs.writeFile(path.join(out_path, 'ocr.cli'), e.cli.join(' '), 'utf8')
+        if(e.log) await fs.writeFile(path.join(out_path, 'ocr.log'), e.log.join('\n'), 'utf8')
         throw(e)
     }
     console.log('OCR done')
-    return 'done'
+    return `${out_path.replace('data', '/files')}/${outfile}.pdf`
 }
+
 
 function tesseract_spawn(filelist, options, out_path, outfile, result) {
     const spawn = require("child_process").spawn

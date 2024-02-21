@@ -6,3 +6,9 @@ tesseract --help-oem
 tesseract --help-psm
 
 https://stackoverflow.com/questions/44571656/how-to-enable-hocr-font-info-in-tesseract-4
+
+
+
+https://pyimagesearch.com/2021/11/15/tesseract-page-segmentation-modes-psms-explained-how-to-improve-your-ocr-accuracy/
+
+https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html

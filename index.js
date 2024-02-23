@@ -59,7 +59,7 @@ router.post('/process', upload.fields([
         } else if(task == 'image2hocr') {
             output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname)
         } else if(task == 'orientation_detection') {
-            output.response.uri = await tesseractToOSD(contentFilepath, requestJSON.params, dirname, "orientation")
+            output.response.uri = await tesseractToOSD(contentFilepath, requestJSON.params, dirname, "orientation.json")
         }
 
        await fs.unlink(contentFilepath)

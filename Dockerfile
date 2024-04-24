@@ -21,7 +21,7 @@ WORKDIR /src
 
 
 # ADD HERE OCR LANGUAGES THAT YOU NEED
-#RUN apt-get install -y tesseract-ocr-fin tesseract-ocr-swe
+RUN apt-get install -y tesseract-ocr-fin tesseract-ocr-swe tesseract-ocr-deu
 
 USER node
 CMD ["node", "index.js"]

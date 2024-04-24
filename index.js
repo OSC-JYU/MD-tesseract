@@ -36,7 +36,6 @@ router.post('/process', upload.fields([
         type: "stored",
         uri: []
     }}
-    console.log(ctx.request.files)
     const requestFilepath = ctx.request.files['request'][0].path
     const contentFilepath = ctx.request.files['content'][0].path
 
@@ -44,9 +43,11 @@ router.post('/process', upload.fields([
         const dirname = contentFilepath.replace('uploads/', 'data/')
         await fs.mkdir(dirname)
 
-        var request = await fs.readFile(requestFilepath)
-        var requestJSON = JSON.parse(request)
+        var requestFile = await fs.readJSON(requestFilepath, 'utf8')
+        var requestJSON = JSON.parse(requestFile)
         console.log(requestJSON)
+        console.log(requestJSON.id)
+        console.log(requestJSON.params)
         const task = requestJSON.params.task
         delete requestJSON.params.task
     
@@ -66,6 +67,7 @@ router.post('/process', upload.fields([
        await fs.unlink(requestFilepath)
 
     } catch (e) {
+        console.log(e)
         console.log(e.message)
         try {
             await fs.unlink(contentFilepath)
@@ -77,6 +79,7 @@ router.post('/process', upload.fields([
     }
 	ctx.body = output
 })
+
 
 
 router.get('/files/:dir/:file', async function (ctx) {
@@ -224,14 +227,3 @@ function tesseract_spawn(filelist, options, out_path, outfile, result) {
          });
      })
 }
-
-async function detect(body) {
-    if(!body || !body.content) return {}
-    if(!body.params) {
-        body.params = {}
-    }
-
-    const result = await cld.detect(body.content, body.params);
-    return result
-}
-

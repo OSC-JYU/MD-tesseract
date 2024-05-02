@@ -55,10 +55,8 @@ router.post('/process', upload.fields([
             output.response.uri = await tesseractToText([contentFilepath], requestJSON.params, dirname, 'text')
         } else if(task == 'searchable_pdf') {
             output.response.uri = await tesseractToPDF(contentFilepath, requestJSON.params, dirname, "file")
-        } else if(task == 'image2alto') {
-            output.response.uri = await tesseractToAlto(contentFilepath, requestJSON.params, dirname)
         } else if(task == 'image2hocr') {
-            output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname)
+            output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname, 'text.hocr')
         } else if(task == 'orientation_detection') {
             output.response.uri = await tesseractToOSD(contentFilepath, requestJSON.params, dirname, "orientation.json")
         }
@@ -171,6 +169,24 @@ async function tesseractToOSD(filelist, options, out_path, outfile) {
 }
 
 
+async function tesseractToHOCR(filelist, options, out_path, outfile) {
+
+    var result = {log: [], data: [], cli: '', exitcode: ''}
+    options.hocr = true
+    try {
+        console.log(options)
+        await tesseract_spawn(filelist, options, out_path, outfile, result)
+        await fs.writeFile(path.join(out_path, 'ocr.cli'), result.cli.join(' '), 'utf8')
+        await fs.writeFile(path.join(out_path, 'ocr.log'), result.log.join('\n'), 'utf8')
+    } catch(e) {
+        if(e.cli) await fs.writeFile(path.join(out_path, 'ocr.cli'), e.cli.join(' '), 'utf8')
+        if(e.log) await fs.writeFile(path.join(out_path, 'ocr.log'), e.log.join('\n'), 'utf8')
+        throw(e)
+    }
+    console.log('Detection done')
+    return `${out_path.replace('data', '/files')}/${outfile}.hocr`
+}
+
 function tesseract_spawn(filelist, options, out_path, outfile, result) {
     const spawn = require("child_process").spawn
     var args = []
@@ -188,7 +204,9 @@ function tesseract_spawn(filelist, options, out_path, outfile, result) {
     if(Array.isArray(filelist)) args.push(path.join(out_path, 'files.txt'))
     else args.push(filelist)
     if(out_path) args.push(path.join(out_path, outfile))
+    // output format
     if(options.pdf) args.push('pdf')
+    else if(options.hocr) args.push('hocr')
     // orientation detection
     if(options.psm ===  0) {
         //args.push('-')

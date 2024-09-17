@@ -56,7 +56,7 @@ router.post('/process', upload.fields([
         } else if(task == 'image2hocr') {
             output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname, 'text.hocr')
         } else if(task == 'orientation_detection') {
-            output.response.uri = await tesseractToOSD(contentFilepath, requestJSON.params, dirname, "orientation.json")
+            output.response.uri = await tesseractToOSD(contentFilepath, requestJSON.params, dirname, "orientation.osd.json")
         }
 
        await fs.unlink(contentFilepath)
@@ -154,6 +154,7 @@ async function tesseractToOSD(filelist, options, out_path, outfile) {
     options.psm = 0
     try {
         console.log(options)
+        console.log(outfile)
         await tesseract_spawn(filelist, options, out_path, outfile, result)
         await fs.writeFile(path.join(out_path, 'ocr.cli'), result.cli.join(' '), 'utf8')
         await fs.writeFile(path.join(out_path, 'ocr.log'), result.log.join('\n'), 'utf8')
@@ -163,9 +164,32 @@ async function tesseractToOSD(filelist, options, out_path, outfile) {
         throw(e)
     }
     console.log('Detection done')
-    return `${out_path.replace('data', '/files')}/${outfile}.osd`
+    var json = await convert2JSON(path.join(out_path, outfile) + '.osd')
+    fs.writeFile(path.join(out_path, outfile), JSON.stringify(json), 'utf8')
+    return `${out_path.replace('data', '/files')}/${outfile}`
 }
 
+async function convert2JSON(file) {
+    var json = {rotate:0, orientation:0, orientation_confidence:0, script_confidence:0, script: ''}
+    var osd = await fs.readFile(file, 'utf-8')
+    for(var line of osd.split('\n')) {
+        if(line.includes('Rotate')) {
+            json.rotate = parseInt(line.split(':')[1])
+        }
+        if(line.includes('Orientation in degrees')) {
+            json.orientation = parseInt(line.split(':')[1])
+        }
+        if(line.includes('Orientation confidence')) {
+            json.orientation_confidence = parseFloat(line.split(':')[1])
+        }
+        if(line.includes('Script confidence')) {
+            json.script_confidence = parseFloat(line.split(':')[1])
+        } else if(line.includes('Script')) {
+            json.script = line.split(':')[1].trim()
+        }
+    }
+    return json
+}
 
 async function tesseractToHOCR(filelist, options, out_path, outfile) {
 

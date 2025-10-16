@@ -28,7 +28,7 @@ router.get('/', function (ctx) {
 })
 
 router.post('/process', upload.fields([
-    { name: 'request', maxCount: 1 },
+    { name: 'message', maxCount: 1 },
     { name: 'content', maxCount: 1 }
   ]), async function (ctx) {
 
@@ -36,38 +36,44 @@ router.post('/process', upload.fields([
         type: "stored",
         uri: []
     }}
-    const requestFilepath = ctx.request.files['request'][0].path
+
+    const messageFilepath = ctx.request.files['message'][0].path
     const contentFilepath = ctx.request.files['content'][0].path
 
     try {
         const dirname = contentFilepath.replace('uploads/', 'data/')
         await fs.mkdir(dirname)
 
-        var requestJSON = await fs.readJSON(requestFilepath, 'utf-8')
-        if(typeof requestJSON === 'string')
-            requestJSON = JSON.parse(requestJSON)
-        const task = requestJSON.params.task
-        delete requestJSON.params.task
+        var messageJSON = await fs.readJSON(messageFilepath, 'utf-8')
+        if(typeof messageJSON === 'string')
+            messageJSON = JSON.parse(messageJSON)
+        const task = messageJSON.task.id
+
+        // convert array to string for 'lang'
+        if(Array.isArray(messageJSON.task.params['lang'])) {
+            messageJSON.task.params['lang'] = messageJSON.task.params['lang'].join('+')
+        }
+        
     
         if(task == 'image2text') {
-            output.response.uri = await tesseractToText([contentFilepath], requestJSON.params, dirname, 'text')
+            output.response.uri = await tesseractToText([contentFilepath], messageJSON.task.params, dirname, 'text')
         } else if(task == 'searchable_pdf') {
-            output.response.uri = await tesseractToPDF(contentFilepath, requestJSON.params, dirname, "file")
+            output.response.uri = await tesseractToPDF(contentFilepath, messageJSON.task.params, dirname, "file")
         } else if(task == 'image2hocr') {
-            output.response.uri = await tesseractToHOCR(contentFilepath, requestJSON.params, dirname, 'text.hocr')
+            output.response.uri = await tesseractToHOCR(contentFilepath, messageJSON.task.params, dirname, 'text.hocr')
         } else if(task == 'orientation_detection') {
-            output.response.uri = await tesseractToOSD(contentFilepath, requestJSON.params, dirname, "orientation.osd.json")
+            output.response.uri = await tesseractToOSD(contentFilepath, messageJSON.task.params, dirname, "orientation.osd.json")
         }
 
        await fs.unlink(contentFilepath)
-       await fs.unlink(requestFilepath)
+       await fs.unlink(messageFilepath)
 
     } catch (e) {
         console.log(e)
         console.log(e.message)
         try {
             await fs.unlink(contentFilepath)
-            await fs.unlink(requestFilepath)
+            await fs.unlink(messageFilepath)
         } catch(e) {
             console.log('Removing of temp files failed')
         }

@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y curl tesseract-ocr tesseract-ocr-fin tesseract-ocr-swe wget unzip
+RUN apt-get update && apt-get install -y curl tesseract-ocr tesseract-ocr-fin tesseract-ocr-swe tesseract-ocr-deu tesseract-ocr-frk wget unzip
 
 # Install Node.js
 ENV NODE_VERSION 20.15.0
@@ -21,10 +21,10 @@ RUN mkdir -p $NVM_DIR \
 # Update the $PATH to make your installed `node` and `npm` available!
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
-#RUN cd /src; wget https://github.com/qpdf/qpdf/releases/download/v11.1.0/qpdf-11.1.0-bin-linux-x86_64.zip; unzip qpdf-11.1.0-bin-linux-x86_64.zip
-
 COPY package.json /src/package.json
 RUN cd /src; npm install
+
+COPY fi_frak_nlf.traineddata /usr/share/tesseract-ocr/5/tessdata
 
 RUN useradd -rm -d /home/node -s /bin/bash  -u 1001 node
 
@@ -33,7 +33,7 @@ WORKDIR /src
 
 
 # ADD HERE OCR LANGUAGES THAT YOU NEED
-#RUN apt-get install -y tesseract-ocr-fin tesseract-ocr-swe tesseract-ocr-deu
+# RUN apt-get install -y tesseract-ocr-deu
 
 USER node
-CMD ["node", "index.js"]
+CMD ["node", "index.mjs"]

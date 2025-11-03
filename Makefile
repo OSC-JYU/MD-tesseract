@@ -2,7 +2,7 @@ IMAGES := $(shell docker images -f "dangling=true" -q)
 CONTAINERS := $(shell docker ps -a -q -f status=exited)
 VOLUME := md-tesseract-data
 VERSION := 0.1
-REPOSITORY := osc.jyu.fi
+REPOSITORY := localhost
 IMAGE := md-tesseract
 
 
@@ -24,6 +24,10 @@ restart:
 	docker stop $(IMAGE)
 	docker rm $(IMAGE)
 	$(MAKE) start
+
+stop:
+	docker stop $(IMAGE)
+	docker rm $(IMAGE)
 
 bash:
 	docker exec -it $(IMAGE) bash

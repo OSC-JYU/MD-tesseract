@@ -1,6 +1,7 @@
-{
-    "type": "pdf",
-    "params": {
-        "task":"searchable_pdf"
+{   "task": {
+        "id": "searchable_pdf",
+        "params": {
+            "lang": "eng"
+        }
     }
 }

@@ -1,6 +1,7 @@
-{
-    "type": "text",
-    "params": {
-        "task":"orientation_detection"
+{   "task": {
+        "id": "orientation_detection",
+        "params": {
+            "lang": "eng"
+        }
     }
 }

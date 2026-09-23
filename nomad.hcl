@@ -46,7 +46,12 @@ job "md-tesseract" {
           ports = ["node"]
       }
       env {
-        PORT = "8400"
+        # Bind to Nomad's per-allocation assigned port, not a literal port: this driver runs
+        # in host network mode, so the container binds host ports directly (no NAT via `to`).
+        PORT = "${NOMAD_PORT_node}"
+        # Overrides service.json's static local_url so /config reports the real, reachable address.
+        # NOMAD_PORT_node is the container-internal port (matches `to`); use the host-mapped port instead.
+        SERVICE_LOCAL_URL = "http://${NOMAD_IP_node}:${NOMAD_HOST_PORT_node}"
       }
       resources {
         memory = 1000  # Memory in MB
